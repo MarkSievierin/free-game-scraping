@@ -23,6 +23,16 @@ const EPIC_POST_CATALOG_DELAY_MAX_MS = 4000;
 const EPIC_CATALOG_SCROLL_MIN_PX = 260;
 const EPIC_CATALOG_SCROLL_MAX_PX = 460;
 
+function resolveBooleanEnv(value, defaultValue) {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+
+  if (!normalizedValue) {
+    return defaultValue;
+  }
+
+  return ["1", "true", "yes", "on"].includes(normalizedValue);
+}
+
 function normalizeText(value) {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
@@ -353,8 +363,14 @@ async function enrichEpicGames(games, context, catalogPage) {
 }
 
 async function createEpicBrowser() {
+  const executablePath = String(process.env.EPIC_BROWSER_EXECUTABLE_PATH || "").trim();
+  const channel = String(process.env.EPIC_BROWSER_CHANNEL || "").trim();
+  const headless = resolveBooleanEnv(process.env.EPIC_BROWSER_HEADLESS, true);
+
   return chromium.launch({
-    headless: false,
+    headless,
+    ...(executablePath ? { executablePath } : {}),
+    ...(!executablePath && channel ? { channel } : {}),
     args: [
       "--disable-blink-features=AutomationControlled",
       "--disable-dev-shm-usage",
