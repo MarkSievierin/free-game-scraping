@@ -15,6 +15,34 @@ class TelegramClient {
     return this.request("sendPhoto", dto.toPayload());
   }
 
+  async deleteMessage({ chatId, messageId }) {
+    return this.request("deleteMessage", {
+      chat_id: chatId,
+      message_id: messageId,
+    });
+  }
+
+  async editMessageText({ chatId, messageId, text, parseMode, replyMarkup }) {
+    return this.request("editMessageText", {
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      ...(parseMode ? { parse_mode: parseMode } : {}),
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+      disable_web_page_preview: "true",
+    });
+  }
+
+  async editMessageCaption({ chatId, messageId, caption, parseMode, replyMarkup }) {
+    return this.request("editMessageCaption", {
+      chat_id: chatId,
+      message_id: messageId,
+      caption,
+      ...(parseMode ? { parse_mode: parseMode } : {}),
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    });
+  }
+
   async request(method, payload) {
     const url = `https://api.telegram.org/bot${this.botToken}/${method}`;
     const body = new URLSearchParams();

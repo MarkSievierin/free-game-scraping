@@ -6,10 +6,12 @@ const {
 const { TelegramClient } = require("./src/clients/telegram.client");
 const { fetchFreeGames: fetchEpicFreeGames } = require("./src/services/epic/free-games.service");
 const {
+  buildGameUuid,
   createActualFreeGamesRepository,
   normalizeServerType,
 } = require("./src/services/storage/actual-free-games.repository");
 const { fetchFreeGames: fetchSteamFreeGames } = require("./src/services/steam/free-games.service");
+const { cleanupStaleFreeGameMessages } = require("./src/services/telegram/stale-free-games-cleanup.service");
 const { resolveTelegramConfig } = require("./src/services/telegram/telegram-config.service");
 const { sendTelegramNotifications } = require("./src/services/telegram/free-games-notification.service");
 
@@ -51,14 +53,12 @@ async function fetchGamesFromEnabledSources({
   maxGames,
   enableEpic,
   enableSteam,
-  knownGameUuidsByType,
 }) {
   const games = [];
 
   if (enableEpic) {
     const epicGames = await fetchEpicFreeGames({
       limit: maxGames,
-      knownGameUuids: Array.from(knownGameUuidsByType.epic || []),
     });
     games.push(...epicGames);
   }
@@ -66,7 +66,6 @@ async function fetchGamesFromEnabledSources({
   if (enableSteam) {
     const steamGames = await fetchSteamFreeGames({
       limit: maxGames,
-      knownGameUuids: Array.from(knownGameUuidsByType.steam || []),
     });
     games.push(...steamGames);
   }
@@ -89,18 +88,31 @@ async function main() {
   const telegramClient = new TelegramClient({ botToken });
 
   try {
-    const knownGameUuidsByType = await actualFreeGamesRepository.getKnownGameUuidsByType();
     const games = await fetchGamesFromEnabledSources({
       maxGames,
       enableEpic,
       enableSteam,
-      knownGameUuidsByType,
     });
 
     if (games.length === 0) {
       console.log("No free games found.");
       return;
     }
+
+    const currentGameUuids = games.map(buildGameUuid).filter(Boolean);
+    const enabledStores = [
+      enableEpic ? "epic" : "",
+      enableSteam ? "steam" : "",
+    ].filter(Boolean);
+
+    await actualFreeGamesRepository.markGamesSeen(games);
+    await cleanupStaleFreeGameMessages({
+      telegramClient,
+      actualFreeGamesRepository,
+      currentGameUuids,
+      enabledStores,
+      allowCleanup: !maxGames,
+    });
 
     const gamesToSend = await actualFreeGamesRepository.filterNewGames(games);
 
@@ -111,11 +123,8 @@ async function main() {
 
     const notifications = buildFreeGamesTelegramNotifications({ chatId, games: gamesToSend });
     const successfulNotifications = await sendTelegramNotifications({ telegramClient, notifications });
-    const successfullySentGames = successfulNotifications
-      .map((notification) => notification.game)
-      .filter(Boolean);
 
-    await actualFreeGamesRepository.saveGames(successfullySentGames);
+    await actualFreeGamesRepository.saveNotifications(successfulNotifications);
   } finally {
     await actualFreeGamesRepository.close();
   }
