@@ -368,7 +368,7 @@ async function createEpicBrowser() {
   const headless = resolveBooleanEnv(process.env.EPIC_BROWSER_HEADLESS, true);
 
   return chromium.launch({
-    headless,
+    headless: false,
     ...(executablePath ? { executablePath } : {}),
     ...(!executablePath && channel ? { channel } : {}),
     args: [
