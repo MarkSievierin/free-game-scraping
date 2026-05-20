@@ -1,0 +1,23 @@
+{
+  "name": "free-games-telegram-bot",
+  "version": "1.0.0",
+  "description": "Epic Games free games scraper with Telegram notifications",
+  "main": "index.js",
+  "scripts": {
+    "setup:db": "node scripts/setup-db.js",
+    "start": "node index.js",
+    "test:telegram": "node scripts/send-telegram-test.js"
+  },
+  "keywords": [
+    "epic-games",
+    "telegram",
+    "scraper"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "1.0.0-rc.12",
+    "dotenv": "^17.2.3",
+    "playwright": "^1.59.1",
+    "sqlite3": "^5.1.7"
+  }
+}
