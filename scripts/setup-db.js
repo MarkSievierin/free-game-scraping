@@ -5,11 +5,11 @@ const path = require("path");
 const {
   all,
   close,
-  ensureDirectoryForFile,
+  exec,
   openDatabase,
-  resolveDatabasePath,
+  resolveMysqlConfig,
   run,
-} = require("../src/services/storage/sqlite.utils");
+} = require("../src/services/storage/mysql.utils");
 
 const MIGRATIONS_DIRECTORY = path.resolve(__dirname, "..", "migrations");
 
@@ -17,9 +17,9 @@ async function ensureMigrationsTable(database) {
   await run(
     database,
     `CREATE TABLE IF NOT EXISTS migrations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) NOT NULL UNIQUE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
   );
 }
@@ -41,10 +41,10 @@ async function getAppliedMigrationNames(database) {
 }
 
 async function applyMigration(database, migration) {
-  await run(database, "BEGIN");
+  await run(database, "START TRANSACTION");
 
   try {
-    await run(database, migration.sql);
+    await exec(database, migration.sql);
     await run(database, "INSERT INTO migrations (name) VALUES (?)", [migration.name]);
     await run(database, "COMMIT");
   } catch (error) {
@@ -54,9 +54,8 @@ async function applyMigration(database, migration) {
 }
 
 async function main() {
-  const databasePath = resolveDatabasePath();
-  ensureDirectoryForFile(databasePath);
-  const database = await openDatabase(databasePath);
+  const databaseConfig = resolveMysqlConfig();
+  const database = await openDatabase();
 
   try {
     await ensureMigrationsTable(database);
@@ -72,7 +71,7 @@ async function main() {
       console.log(`Applied migration: ${migration.name}`);
     }
 
-    console.log(`Database is ready: ${databasePath}`);
+    console.log(`Database is ready: ${databaseConfig.database}@${databaseConfig.host}:${databaseConfig.port}`);
   } finally {
     await close(database);
   }

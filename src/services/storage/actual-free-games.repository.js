@@ -1,12 +1,10 @@
 const {
   all,
   close,
-  ensureDirectoryForFile,
   get,
   openDatabase,
-  resolveDatabasePath,
   run,
-} = require("./sqlite.utils");
+} = require("./mysql.utils");
 
 function normalizeStore(store) {
   return String(store || "").trim().toLowerCase();
@@ -23,13 +21,16 @@ function buildGameUuid(game) {
   return `${store}:${externalId}`;
 }
 
-async function createActualFreeGamesRepository() {
-  const databasePath = resolveDatabasePath();
-  ensureDirectoryForFile(databasePath);
-  const database = await openDatabase(databasePath);
+function normalizeServerType(value) {
+  return String(value || "").trim().toLowerCase() === "prod" ? "prod" : "stage";
+}
+
+async function createActualFreeGamesRepository({ serverType } = {}) {
+  const normalizedServerType = normalizeServerType(serverType);
+  const database = await openDatabase();
   const actualFreeGameTable = await get(
     database,
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'actual_free_game' LIMIT 1",
+    "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'actual_free_game' LIMIT 1",
   );
 
   if (!actualFreeGameTable) {
@@ -47,8 +48,8 @@ async function createActualFreeGamesRepository() {
 
       const row = await get(
         database,
-        "SELECT id FROM actual_free_game WHERE uuid = ? LIMIT 1",
-        [uuid],
+        "SELECT id FROM actual_free_game WHERE uuid = ? AND server_type = ? LIMIT 1",
+        [uuid, normalizedServerType],
       );
 
       return Boolean(row);
@@ -67,7 +68,8 @@ async function createActualFreeGamesRepository() {
     async getKnownGameUuidsByType() {
       const rows = await all(
         database,
-        "SELECT uuid, type FROM actual_free_game",
+        "SELECT uuid, type FROM actual_free_game WHERE server_type = ?",
+        [normalizedServerType],
       );
       const grouped = {
         steam: new Set(),
@@ -97,9 +99,9 @@ async function createActualFreeGamesRepository() {
 
       await run(
         database,
-        `INSERT OR IGNORE INTO actual_free_game (uuid, type, discount_ends_at, created_at)
-         VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
-        [uuid, type, String(game.offerEndsAt || "").trim()],
+        `INSERT IGNORE INTO actual_free_game (uuid, type, server_type, discount_ends_at, created_at)
+         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+        [uuid, type, normalizedServerType, String(game.offerEndsAt || "").trim()],
       );
 
       return true;
@@ -118,4 +120,5 @@ async function createActualFreeGamesRepository() {
 module.exports = {
   buildGameUuid,
   createActualFreeGamesRepository,
+  normalizeServerType,
 };

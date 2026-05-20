@@ -7,6 +7,7 @@ const { TelegramClient } = require("./src/clients/telegram.client");
 const { fetchFreeGames: fetchEpicFreeGames } = require("./src/services/epic/free-games.service");
 const {
   createActualFreeGamesRepository,
+  normalizeServerType,
 } = require("./src/services/storage/actual-free-games.repository");
 const { fetchFreeGames: fetchSteamFreeGames } = require("./src/services/steam/free-games.service");
 const { resolveTelegramConfig } = require("./src/services/telegram/telegram-config.service");
@@ -78,19 +79,17 @@ async function main() {
   const maxGames = resolveMaxGamesLimit(process.env.MAX_GAMES);
   const enableEpic = resolveBooleanEnv(process.env.ENABLE_EPIC, true);
   const enableSteam = resolveBooleanEnv(process.env.ENABLE_STEAM, false);
-  const shouldBypassActualFreeGamesFilter = appType !== "prod";
+  const serverType = normalizeServerType(appType);
 
   if (!enableEpic && !enableSteam) {
     throw new Error("At least one source must be enabled: ENABLE_EPIC or ENABLE_STEAM");
   }
 
-  const actualFreeGamesRepository = await createActualFreeGamesRepository();
+  const actualFreeGamesRepository = await createActualFreeGamesRepository({ serverType });
   const telegramClient = new TelegramClient({ botToken });
 
   try {
-    const knownGameUuidsByType = shouldBypassActualFreeGamesFilter
-      ? { steam: new Set(), gog: new Set(), epic: new Set() }
-      : await actualFreeGamesRepository.getKnownGameUuidsByType();
+    const knownGameUuidsByType = await actualFreeGamesRepository.getKnownGameUuidsByType();
     const games = await fetchGamesFromEnabledSources({
       maxGames,
       enableEpic,
@@ -103,9 +102,7 @@ async function main() {
       return;
     }
 
-    const gamesToSend = shouldBypassActualFreeGamesFilter
-      ? games
-      : await actualFreeGamesRepository.filterNewGames(games);
+    const gamesToSend = await actualFreeGamesRepository.filterNewGames(games);
 
     if (gamesToSend.length === 0) {
       console.log("No new free games to send.");
@@ -118,9 +115,7 @@ async function main() {
       .map((notification) => notification.game)
       .filter(Boolean);
 
-    if (!shouldBypassActualFreeGamesFilter) {
-      await actualFreeGamesRepository.saveGames(successfullySentGames);
-    }
+    await actualFreeGamesRepository.saveGames(successfullySentGames);
   } finally {
     await actualFreeGamesRepository.close();
   }

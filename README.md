@@ -17,7 +17,7 @@ Node.js script that opens Epic Games Store catalog with Playwright, parses the r
 npm install
 ```
 
-2. Install Playwright browser:
+2. Install Playwright browser locally, or configure a system Chrome executable on the server:
 
 ```bash
 npx playwright install chromium
@@ -26,18 +26,30 @@ npx playwright install chromium
 3. Fill in `.env`:
 
 ```env
-APP_TYPE=dev
+APP_TYPE=stage
 MAX_GAMES=
 ENABLE_EPIC=true
 ENABLE_STEAM=false
+EPIC_BROWSER_HEADLESS=true
+EPIC_BROWSER_CHANNEL=chrome
+EPIC_BROWSER_EXECUTABLE_PATH=
+
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_DATABASE=free_games
+MYSQL_USER=free_games_bot
+MYSQL_PASSWORD=your_mysql_password
 
 BOT_TOKEN=your_telegram_bot_token
 CHAT_ID=your_chat_id
+
+BOT_TOKEN_DEV=your_stage_telegram_bot_token
+CHAT_ID_DEV=your_stage_chat_id
 ```
 
 `ENABLE_EPIC` and `ENABLE_STEAM` control which source flows run. At least one of them must be `true`.
 
-4. Initialize SQLite database and run migrations:
+4. Initialize MySQL database and run migrations:
 
 ```bash
 npm run setup:db
