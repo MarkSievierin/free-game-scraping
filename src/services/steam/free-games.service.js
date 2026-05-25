@@ -192,6 +192,7 @@ async function fetchFreeGames({ limit, knownGameUuids = [] } = {}) {
   const html = await requestText(STEAM_URL);
   const $ = cheerio.load(html);
   const freeGames = [];
+  const currentGameUuids = [];
   const knownGameUuidSet = new Set(knownGameUuids);
 
   $(".search_result_row").each((_, element) => {
@@ -223,7 +224,13 @@ async function fetchFreeGames({ limit, knownGameUuids = [] } = {}) {
         offerEndsAt: "",
       };
 
-      if (!knownGameUuidSet.has(buildGameUuid(game))) {
+      const gameUuid = buildGameUuid(game);
+
+      if (gameUuid) {
+        currentGameUuids.push(gameUuid);
+      }
+
+      if (!knownGameUuidSet.has(gameUuid)) {
         freeGames.push(game);
       }
     }
@@ -235,6 +242,11 @@ async function fetchFreeGames({ limit, knownGameUuids = [] } = {}) {
     const enrichedGame = await enrichGame(game, index);
     enrichedGames.push(enrichedGame);
   }
+
+  Object.defineProperty(enrichedGames, "currentGameUuids", {
+    value: currentGameUuids,
+    enumerable: false,
+  });
 
   return enrichedGames;
 }

@@ -53,24 +53,51 @@ async function fetchGamesFromEnabledSources({
   maxGames,
   enableEpic,
   enableSteam,
+  knownGameUuidsByType = {},
 }) {
   const games = [];
+  const currentGameUuids = [];
 
   if (enableEpic) {
     const epicGames = await fetchEpicFreeGames({
       limit: maxGames,
+      knownGameUuids: getKnownGameUuidsForStore(knownGameUuidsByType, "epic"),
     });
     games.push(...epicGames);
+    currentGameUuids.push(...getCurrentGameUuids(epicGames));
   }
 
   if (enableSteam) {
     const steamGames = await fetchSteamFreeGames({
       limit: maxGames,
+      knownGameUuids: getKnownGameUuidsForStore(knownGameUuidsByType, "steam"),
     });
     games.push(...steamGames);
+    currentGameUuids.push(...getCurrentGameUuids(steamGames));
   }
 
-  return games;
+  return {
+    games,
+    currentGameUuids: [...new Set(currentGameUuids)],
+  };
+}
+
+function getKnownGameUuidsForStore(knownGameUuidsByType, store) {
+  const uuids = knownGameUuidsByType?.[store];
+
+  if (!uuids) {
+    return [];
+  }
+
+  return Array.from(uuids).map((uuid) => String(uuid || "").trim()).filter(Boolean);
+}
+
+function getCurrentGameUuids(games) {
+  if (Array.isArray(games.currentGameUuids)) {
+    return games.currentGameUuids;
+  }
+
+  return games.map(buildGameUuid).filter(Boolean);
 }
 
 async function main() {
@@ -88,24 +115,25 @@ async function main() {
   const telegramClient = new TelegramClient({ botToken });
 
   try {
-    const games = await fetchGamesFromEnabledSources({
+    const knownGameUuidsByType = await actualFreeGamesRepository.getKnownGameUuidsByType();
+    const { games, currentGameUuids } = await fetchGamesFromEnabledSources({
       maxGames,
       enableEpic,
       enableSteam,
+      knownGameUuidsByType,
     });
 
-    if (games.length === 0) {
+    if (games.length === 0 && currentGameUuids.length === 0) {
       console.log("No free games found.");
       return;
     }
 
-    const currentGameUuids = games.map(buildGameUuid).filter(Boolean);
     const enabledStores = [
       enableEpic ? "epic" : "",
       enableSteam ? "steam" : "",
     ].filter(Boolean);
 
-    await actualFreeGamesRepository.markGamesSeen(games);
+    await actualFreeGamesRepository.markGameUuidsSeen(currentGameUuids);
     await cleanupStaleFreeGameMessages({
       telegramClient,
       actualFreeGamesRepository,
@@ -113,6 +141,11 @@ async function main() {
       enabledStores,
       allowCleanup: !maxGames,
     });
+
+    if (games.length === 0) {
+      console.log("No new free games to send.");
+      return;
+    }
 
     const gamesToSend = await actualFreeGamesRepository.filterNewGames(games);
 
@@ -130,7 +163,17 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(`Fatal error: ${error.message}`);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`Fatal error: ${error.message}`);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = {
+  fetchGamesFromEnabledSources,
+  getCurrentGameUuids,
+  getKnownGameUuidsForStore,
+  resolveBooleanEnv,
+  resolveMaxGamesLimit,
+};

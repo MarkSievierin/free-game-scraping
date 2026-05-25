@@ -110,6 +110,19 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
         );
       }
     },
+    async markGameUuidsSeen(gameUuids) {
+      const uuids = [...new Set((gameUuids || []).map((uuid) => String(uuid || "").trim()).filter(Boolean))];
+
+      for (const uuid of uuids) {
+        await run(
+          database,
+          `UPDATE actual_free_game
+           SET last_seen_at = CURRENT_TIMESTAMP
+           WHERE uuid = ? AND server_type = ? AND status = 'active'`,
+          [uuid, normalizedServerType],
+        );
+      }
+    },
     async findActiveGamesMissingFromCurrent({ currentGameUuids, enabledStores }) {
       const stores = [...new Set((enabledStores || []).map(normalizeStore).filter(Boolean))];
       const uuids = [...new Set((currentGameUuids || []).map((uuid) => String(uuid || "").trim()).filter(Boolean))];

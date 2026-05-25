@@ -18,10 +18,14 @@ const EPIC_PAGE_TIMEOUT_MS = 10000;
 const EPIC_RENDER_DELAY_MS = 12000;
 const EPIC_DETAIL_RENDER_DELAY_MS = 8000;
 const EPIC_DETAIL_PROCESS_TIMEOUT_MS = 30000;
+const EPIC_DETAIL_VISIT_DELAY_MIN_MS = 2500;
+const EPIC_DETAIL_VISIT_DELAY_MAX_MS = 4500;
 const EPIC_POST_CATALOG_DELAY_MIN_MS = 2000;
 const EPIC_POST_CATALOG_DELAY_MAX_MS = 4000;
 const EPIC_CATALOG_SCROLL_MIN_PX = 260;
 const EPIC_CATALOG_SCROLL_MAX_PX = 460;
+const EPIC_DETAIL_SCROLL_MIN_PX = 420;
+const EPIC_DETAIL_SCROLL_MAX_PX = 760;
 
 function resolveBooleanEnv(value, defaultValue) {
   const normalizedValue = String(value || "").trim().toLowerCase();
@@ -87,6 +91,27 @@ async function performEpicCatalogWarmup(page) {
   await page.waitForTimeout(getRandomInt(450, 900));
   await wheelInSmallSteps(page, -scrollDelta);
   await returnCatalogToTop(page);
+  await moveMouseToRandomCatalogPoints(page, getRandomInt(1, 2));
+}
+
+async function performEpicDetailVisitActivity(page) {
+  await page.waitForTimeout(
+    getRandomInt(EPIC_DETAIL_VISIT_DELAY_MIN_MS, EPIC_DETAIL_VISIT_DELAY_MAX_MS),
+  );
+  await moveMouseToRandomCatalogPoints(page, getRandomInt(2, 4));
+
+  const firstScrollDelta = getRandomInt(EPIC_DETAIL_SCROLL_MIN_PX, EPIC_DETAIL_SCROLL_MAX_PX);
+  await wheelInSmallSteps(page, firstScrollDelta);
+  await page.waitForTimeout(getRandomInt(900, 1700));
+  await moveMouseToRandomCatalogPoints(page, getRandomInt(1, 3));
+
+  const secondScrollDelta = getRandomInt(
+    Math.round(EPIC_DETAIL_SCROLL_MIN_PX * 0.45),
+    Math.round(EPIC_DETAIL_SCROLL_MAX_PX * 0.75),
+  );
+  await wheelInSmallSteps(page, secondScrollDelta);
+  await page.waitForTimeout(getRandomInt(700, 1400));
+  await wheelInSmallSteps(page, -getRandomInt(180, 360));
   await moveMouseToRandomCatalogPoints(page, getRandomInt(1, 2));
 }
 
@@ -256,6 +281,7 @@ async function fetchEpicGameDetails(detailPage, game) {
   return Promise.race([
     (async () => {
       await detailPage.waitForTimeout(EPIC_DETAIL_RENDER_DELAY_MS);
+      await performEpicDetailVisitActivity(detailPage);
       const bodyText = await detailPage.evaluate(() => document.body.innerText).catch(() => "");
       const description = await detailPage
         .locator(".css-1myreog")
@@ -419,12 +445,20 @@ async function fetchFreeGames({ limit, knownGameUuids = [] } = {}) {
     await performEpicCatalogWarmup(page);
 
     const html = await page.content();
+    const catalogGames = parseEpicGamesFromHtml(html);
+    const currentGameUuids = catalogGames.map(buildGameUuid).filter(Boolean);
     const knownGameUuidSet = new Set(knownGameUuids);
-    const games = parseEpicGamesFromHtml(html)
+    const games = catalogGames
       .filter((game) => !knownGameUuidSet.has(buildGameUuid(game)))
       .slice(0, limit || Number.MAX_SAFE_INTEGER);
+    const enrichedGames = await enrichEpicGames(games, context, page);
 
-    return await enrichEpicGames(games, context, page);
+    Object.defineProperty(enrichedGames, "currentGameUuids", {
+      value: currentGameUuids,
+      enumerable: false,
+    });
+
+    return enrichedGames;
   } finally {
     await context.close();
     await browser.close();
