@@ -1,4 +1,6 @@
 const cheerio = require("cheerio");
+const fs = require("node:fs/promises");
+const path = require("node:path");
 const { chromium } = require("playwright");
 const { buildGameUuid } = require("../storage/actual-free-games.repository");
 
@@ -47,6 +49,25 @@ function getRandomInt(min, max) {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+async function saveEpicDebugArtifacts(page, html) {
+  if (!resolveBooleanEnv(process.env.EPIC_DEBUG, false)) {
+    return;
+  }
+
+  const outputDir = path.resolve(process.cwd(), "tmp", "epic-debug");
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+  await fs.mkdir(outputDir, { recursive: true });
+  await fs.writeFile(path.join(outputDir, `${timestamp}.html`), html, "utf8");
+  await page.screenshot({
+    path: path.join(outputDir, `${timestamp}.png`),
+    fullPage: true,
+  }).catch((error) => {
+    console.error(`Epic debug screenshot failed: ${error.message}`);
+  });
+  console.log(`Epic debug artifacts saved to ${outputDir}`);
 }
 
 function getViewportSize(page) {
@@ -394,7 +415,7 @@ async function createEpicBrowser() {
   const headless = resolveBooleanEnv(process.env.EPIC_BROWSER_HEADLESS, true);
 
   return chromium.launch({
-    headless: false,
+    headless,
     ...(executablePath ? { executablePath } : {}),
     ...(!executablePath && channel ? { channel } : {}),
     args: [
@@ -446,6 +467,11 @@ async function fetchFreeGames({ limit, knownGameUuids = [] } = {}) {
 
     const html = await page.content();
     const catalogGames = parseEpicGamesFromHtml(html);
+
+    if (catalogGames.length === 0) {
+      await saveEpicDebugArtifacts(page, html);
+    }
+
     const currentGameUuids = catalogGames.map(buildGameUuid).filter(Boolean);
     const knownGameUuidSet = new Set(knownGameUuids);
     const games = catalogGames

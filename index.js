@@ -63,8 +63,13 @@ async function fetchGamesFromEnabledSources({
       limit: maxGames,
       knownGameUuids: getKnownGameUuidsForStore(knownGameUuidsByType, "epic"),
     });
+    const epicCurrentGameUuids = getCurrentGameUuids(epicGames);
+
     games.push(...epicGames);
-    currentGameUuids.push(...getCurrentGameUuids(epicGames));
+    currentGameUuids.push(...epicCurrentGameUuids);
+    console.log(
+      `Epic fetched: current=${epicCurrentGameUuids.length}, candidatesToSend=${epicGames.length}`,
+    );
   }
 
   if (enableSteam) {
@@ -72,8 +77,13 @@ async function fetchGamesFromEnabledSources({
       limit: maxGames,
       knownGameUuids: getKnownGameUuidsForStore(knownGameUuidsByType, "steam"),
     });
+    const steamCurrentGameUuids = getCurrentGameUuids(steamGames);
+
     games.push(...steamGames);
-    currentGameUuids.push(...getCurrentGameUuids(steamGames));
+    currentGameUuids.push(...steamCurrentGameUuids);
+    console.log(
+      `Steam fetched: current=${steamCurrentGameUuids.length}, candidatesToSend=${steamGames.length}`,
+    );
   }
 
   return {
