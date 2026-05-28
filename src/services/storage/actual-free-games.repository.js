@@ -52,7 +52,13 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
 
       const row = await get(
         database,
-        "SELECT id FROM actual_free_game WHERE uuid = ? AND server_type = ? AND status = 'active' LIMIT 1",
+        `SELECT id
+         FROM actual_free_game
+         WHERE uuid = ?
+           AND server_type = ?
+           AND status = 'active'
+           AND telegram_message_id IS NOT NULL
+         LIMIT 1`,
         [uuid, normalizedServerType],
       );
 
@@ -72,7 +78,11 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
     async getKnownGameUuidsByType() {
       const rows = await all(
         database,
-        "SELECT uuid, type FROM actual_free_game WHERE server_type = ? AND status = 'active'",
+        `SELECT uuid, type
+         FROM actual_free_game
+         WHERE server_type = ?
+           AND status = 'active'
+           AND telegram_message_id IS NOT NULL`,
         [normalizedServerType],
       );
       const grouped = {

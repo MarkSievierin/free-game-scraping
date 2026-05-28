@@ -100,6 +100,15 @@ function getCurrentGameUuids(games) {
   return games.map(buildGameUuid).filter(Boolean);
 }
 
+function countKnownGameUuids(knownGameUuidsByType) {
+  return Object.fromEntries(
+    Object.entries(knownGameUuidsByType || {}).map(([store, uuids]) => [
+      store,
+      uuids?.size || 0,
+    ]),
+  );
+}
+
 async function main() {
   const { appType, botToken, chatId } = resolveTelegramConfig();
   const maxGames = resolveMaxGamesLimit(process.env.MAX_GAMES);
@@ -116,12 +125,21 @@ async function main() {
 
   try {
     const knownGameUuidsByType = await actualFreeGamesRepository.getKnownGameUuidsByType();
+    console.log(
+      `Run config: appType=${appType || "(empty)"}, serverType=${serverType}, ` +
+        `epic=${enableEpic}, steam=${enableSteam}, maxGames=${maxGames || "all"}, ` +
+        `sentKnown=${JSON.stringify(countKnownGameUuids(knownGameUuidsByType))}`,
+    );
+
     const { games, currentGameUuids } = await fetchGamesFromEnabledSources({
       maxGames,
       enableEpic,
       enableSteam,
       knownGameUuidsByType,
     });
+    console.log(
+      `Fetched games: current=${currentGameUuids.length}, candidatesToSend=${games.length}`,
+    );
 
     if (games.length === 0 && currentGameUuids.length === 0) {
       console.log("No free games found.");
