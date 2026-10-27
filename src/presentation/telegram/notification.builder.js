@@ -69,6 +69,23 @@ function buildGameCaption(game) {
   return lines.join("\n");
 }
 
+// Ended posts stay short: the store link and the claim button only lead to a paid page now.
+function buildEndedGameText({ title, endDate }) {
+  const endedLine = endDate ? `⛔ Раздача завершилась ${endDate}` : "⛔ Раздача завершилась";
+  const lines = [
+    `<s><b>${escapeTelegramHtml(title)}</b></s>`,
+    escapeTelegramHtml(endedLine),
+  ];
+  const channelMention = getChannelMention();
+
+  if (channelMention) {
+    lines.push("");
+    lines.push(`🎮 Больше бесплатных игр: ${escapeTelegramHtml(channelMention)}`);
+  }
+
+  return lines.join("\n");
+}
+
 function buildClaimButtonMarkup(game) {
   if (!game.link) {
     return undefined;
@@ -140,6 +157,7 @@ function buildFreeGamesTelegramNotifications({ chatId, games }) {
 }
 
 module.exports = {
+  buildEndedGameText,
   buildNoFreeGamesTelegramNotification,
   buildFreeGamesTelegramNotifications,
 };

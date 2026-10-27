@@ -1,22 +1,22 @@
-const { escapeTelegramHtml } = require("../shared/telegram-html");
+const { buildEndedGameText } = require("../presentation/telegram/notification.builder");
+const { formatOfferEndDate } = require("../shared/offer-date");
 
 const DELETE_MESSAGE_MAX_AGE_MS = 47 * 60 * 60 * 1000;
 
+function getEndedGameDate(game) {
+  // Old Steam rows keep "27 августа в 17:00" without a year; the post date anchors the year.
+  const referenceDate = new Date(game.message_created_at || game.created_at || "");
+
+  return formatOfferEndDate(game.discount_ends_at, {
+    referenceDate: Number.isNaN(referenceDate.getTime()) ? undefined : referenceDate,
+  });
+}
+
 function buildEndedText(game) {
-  const title = String(game.title || game.uuid || "Free game").trim();
-  const link = String(game.link || "").trim();
-  const lines = [
-    `<b>${escapeTelegramHtml(title)}</b>`,
-    "",
-    "Акция закончилась",
-  ];
-
-  if (link) {
-    lines.push("");
-    lines.push(escapeTelegramHtml(link));
-  }
-
-  return lines.join("\n");
+  return buildEndedGameText({
+    title: String(game.title || game.uuid || "Free game").trim(),
+    endDate: getEndedGameDate(game),
+  });
 }
 
 function isFreshEnoughToDelete(game) {
@@ -123,5 +123,6 @@ async function cleanupStaleFreeGameMessages({
 }
 
 module.exports = {
+  buildEndedText,
   cleanupStaleFreeGameMessages,
 };

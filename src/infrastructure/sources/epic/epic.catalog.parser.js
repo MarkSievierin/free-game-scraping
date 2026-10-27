@@ -1,10 +1,7 @@
 const { buildGameUuid } = require("../../../domain/free-game");
 const { normalizeText } = require("../../../shared/text");
-const {
-  EPIC_BASE_URL,
-  EPIC_DEFAULT_CATEGORY,
-  resolveEpicCatalogConfig,
-} = require("./epic.catalog.config");
+const { formatOfferEndsAtFromTimestamp } = require("../../../shared/offer-date");
+const { EPIC_BASE_URL, resolveEpicCatalogConfig } = require("./epic.catalog.config");
 
 function buildAbsoluteEpicUrl(value) {
   const path = normalizeText(value);
@@ -49,47 +46,22 @@ function getEpicOfferPageSlug(element) {
   );
 }
 
-function formatEpicOfferEndsAt(value) {
-  if (!value) {
-    return "";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return normalizeText(value);
-  }
-
-  const formatter = new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Europe/Berlin",
-  });
-  const parts = Object.fromEntries(
-    formatter
-      .formatToParts(date)
-      .filter((part) => part.type !== "literal")
-      .map((part) => [part.type, part.value]),
-  );
-
-  return `${parts.day}.${parts.month}.${parts.year} в ${parts.hour}:${parts.minute}`;
-}
-
-function getActiveLineOffer(element, now = new Date()) {
+function getActiveFreePromotion(element, now = new Date()) {
   const nowTimestamp = now.getTime();
-  const lineOffers = element?.price?.lineOffers || [];
+  const promotionGroups = element?.promotions?.promotionalOffers || [];
 
-  for (const lineOffer of lineOffers) {
-    for (const rule of lineOffer?.appliedRules || []) {
-      const endTimestamp = rule.endDate ? Date.parse(rule.endDate) : NaN;
-      const endsInTheFuture = Number.isNaN(endTimestamp) || endTimestamp > nowTimestamp;
+  for (const group of promotionGroups) {
+    for (const promotion of group?.promotionalOffers || []) {
+      const startTimestamp = Date.parse(promotion?.startDate);
+      const endTimestamp = Date.parse(promotion?.endDate);
 
-      if (endsInTheFuture) {
-        return rule;
+      // discountPercentage is the share of the price left to pay, so 0 means a giveaway.
+      if (
+        promotion?.discountSetting?.discountPercentage === 0 &&
+        startTimestamp <= nowTimestamp &&
+        nowTimestamp < endTimestamp
+      ) {
+        return promotion;
       }
     }
   }
@@ -146,7 +118,7 @@ function isGameCatalogElement(element) {
   return categoryPaths.some((path) => path === "games" || path.startsWith("games/"));
 }
 
-function mapEpicCatalogElement(element, offer, locale) {
+function mapEpicCatalogElement(element, promotion, locale) {
   const catalogPath = normalizeText(element?.url);
   const fallbackSlug = getEpicOfferPageSlug(element);
   const fallbackLocale = locale.toLowerCase() === "ru-ru" ? "ru" : locale;
@@ -181,7 +153,7 @@ function mapEpicCatalogElement(element, offer, locale) {
     description: normalizeText(element.description || element.longDescription || ""),
     genres: [],
     tags,
-    offerEndsAt: formatEpicOfferEndsAt(offer?.endDate) || normalizeText(element?.readerOfferEndsAt),
+    offerEndsAt: formatOfferEndsAtFromTimestamp(promotion.endDate),
   };
 }
 
@@ -195,19 +167,17 @@ function parseEpicGamesFromCatalog(payload, { now = new Date(), locale } = {}) {
   }
 
   for (const element of elements) {
-    const offer = getActiveLineOffer(element, now);
-    const hasLineOffers =
-      Array.isArray(element?.price?.lineOffers) && element.price.lineOffers.length > 0;
+    const promotion = getActiveFreePromotion(element, now);
 
     if (
       element?.price?.totalPrice?.discountPrice !== 0 ||
-      (hasLineOffers && !offer) ||
+      !promotion ||
       !isGameCatalogElement(element)
     ) {
       continue;
     }
 
-    const game = mapEpicCatalogElement(element, offer, resolvedLocale);
+    const game = mapEpicCatalogElement(element, promotion, resolvedLocale);
 
     if (game) {
       gamesByUuid.set(buildGameUuid(game), game);
@@ -217,45 +187,10 @@ function parseEpicGamesFromCatalog(payload, { now = new Date(), locale } = {}) {
   return [...gamesByUuid.values()];
 }
 
-function parseEpicBrowseMarkdown(markdown) {
-  const elements = [];
-  const cardPattern =
-    /^\*\s+\[!\[[^\]]*:\s*([^\]]+)\]\(([^)]+)\)\s+(?:Base Game|Базовая игра)\s+(.+?)\s+(-\d+%)\s+(.+?)\*\s+(?:Free|Бесплатно)\]\(([^)]+)\)/gm;
-
-  for (const match of String(markdown || "").matchAll(cardPattern)) {
-    const discount = Number.parseInt(match[4].replace("%", ""), 10);
-
-    elements.push({
-      title: normalizeText(match[1]),
-      url: buildAbsoluteEpicUrl(match[6]),
-      categories: [{ path: EPIC_DEFAULT_CATEGORY }],
-      keyImages: [{ type: "OfferImageWide", url: normalizeText(match[2]) }],
-      price: {
-        totalPrice: {
-          discountPrice: discount === -100 ? 0 : 1,
-          originalPrice: normalizeText(match[5]),
-          fmtPrice: { originalPrice: normalizeText(match[5]) },
-        },
-      },
-    });
-  }
-
-  return {
-    data: {
-      Catalog: {
-        searchStore: {
-          elements,
-          paging: { count: elements.length, total: elements.length },
-        },
-      },
-    },
-  };
-}
-
 module.exports = {
   buildAbsoluteEpicUrl,
   extractOfferSlug,
+  getActiveFreePromotion,
   getEpicOfferPageSlug,
-  parseEpicBrowseMarkdown,
   parseEpicGamesFromCatalog,
 };

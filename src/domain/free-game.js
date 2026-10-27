@@ -1,3 +1,6 @@
+// A post without any of these looks broken in the channel, so it is held back instead.
+const REQUIRED_GAME_FIELDS = ["title", "link", "imageUrl", "description", "offerEndsAt"];
+
 function normalizeStore(store) {
   return String(store || "").trim().toLowerCase();
 }
@@ -13,7 +16,13 @@ function buildGameUuid(game) {
   return `${store}:${externalId}`;
 }
 
+function getMissingGameFields(game) {
+  return REQUIRED_GAME_FIELDS.filter((field) => !String(game?.[field] ?? "").trim());
+}
+
 module.exports = {
+  REQUIRED_GAME_FIELDS,
   buildGameUuid,
+  getMissingGameFields,
   normalizeStore,
 };

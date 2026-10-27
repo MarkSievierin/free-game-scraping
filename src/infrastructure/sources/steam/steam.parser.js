@@ -1,5 +1,6 @@
 const cheerio = require("cheerio");
 const { buildGameUuid } = require("../../../domain/free-game");
+const { normalizeOfferEndsAt } = require("../../../shared/offer-date");
 const { normalizeText } = require("../../../shared/text");
 
 const MAX_TAGS = 5;
@@ -37,11 +38,11 @@ function normalizePrice(price) {
   return `$${numericPart}`;
 }
 
-function extractOfferEndsAt(discountQuantityText) {
+function extractOfferEndsAt(discountQuantityText, { now } = {}) {
   const normalizedText = normalizeText(discountQuantityText);
   const match = normalizedText.match(/до\s+(\d{1,2}\s+[а-яё]+(?:\s+в\s+\d{1,2}:\d{2})?)/i);
 
-  return match ? match[1] : "";
+  return match ? normalizeOfferEndsAt(match[1], { referenceDate: now }) : "";
 }
 
 function parseSteamSearchResults(html) {
@@ -100,7 +101,7 @@ function parseSteamAppDetails(payload, appId) {
   };
 }
 
-function parseSteamPageMetadata(html) {
+function parseSteamPageMetadata(html, { now = new Date() } = {}) {
   const $ = cheerio.load(html);
   const tags = $(".app_tag")
     .toArray()
@@ -112,7 +113,7 @@ function parseSteamPageMetadata(html) {
 
   return {
     tags,
-    offerEndsAt: extractOfferEndsAt(discountQuantityText),
+    offerEndsAt: extractOfferEndsAt(discountQuantityText, { now }),
   };
 }
 

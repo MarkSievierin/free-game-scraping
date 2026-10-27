@@ -1,10 +1,12 @@
 const { resolveRuntimeConfig } = require("../config/runtime.config");
 const { resolveTelegramConfig } = require("../config/telegram.config");
+const { buildGameUuid, getMissingGameFields } = require("../domain/free-game");
 const { createActualFreeGamesRepository } = require("../infrastructure/database/actual-free-game.repository");
 const { TelegramClient } = require("../infrastructure/telegram/telegram.client");
 const { buildFreeGamesTelegramNotifications } = require("../presentation/telegram/notification.builder");
 const { cleanupStaleFreeGameMessages } = require("./cleanup-stale-free-game-messages");
 const { createErrorReporter } = require("./error-reporter");
+const { createIncompleteGamesReporter } = require("./incomplete-games-reporter");
 const { sendTelegramNotifications } = require("./send-telegram-notifications");
 const {
   countKnownGameUuids,
@@ -13,8 +15,35 @@ const {
   getKnownGameUuidsForStore,
 } = require("./source-fetcher");
 
+function splitGamesByCompleteness(games) {
+  const completeGames = [];
+  const incompleteGames = [];
+
+  for (const game of games) {
+    const missingFields = getMissingGameFields(game);
+
+    if (missingFields.length === 0) {
+      completeGames.push(game);
+    } else {
+      incompleteGames.push({ game, missingFields });
+    }
+  }
+
+  return { completeGames, incompleteGames };
+}
+
+function logIncompleteGames(incompleteGames) {
+  for (const { game, missingFields } of incompleteGames) {
+    console.log(
+      `Skipped incomplete game ${buildGameUuid(game) || game.title || "(unknown)"}: ` +
+        `missing ${missingFields.join(", ")}`,
+    );
+  }
+}
+
 async function runFreeGames({ env = process.env } = {}) {
   const reportError = createErrorReporter({ env });
+  const reportIncompleteGames = createIncompleteGamesReporter({ env });
   let actualFreeGamesRepository;
   let phase = "configuration";
 
@@ -74,10 +103,24 @@ async function runFreeGames({ env = process.env } = {}) {
     }
 
     phase = "database.filter-new-games";
-    const gamesToSend = await actualFreeGamesRepository.filterNewGames(games);
+    const newGames = await actualFreeGamesRepository.filterNewGames(games);
+
+    if (newGames.length === 0) {
+      console.log("No new free games to send.");
+      return;
+    }
+
+    // Incomplete games are neither sent nor saved, so a later run publishes them once data appears.
+    const { completeGames: gamesToSend, incompleteGames } = splitGamesByCompleteness(newGames);
+
+    if (incompleteGames.length > 0) {
+      phase = "telegram.report-incomplete";
+      logIncompleteGames(incompleteGames);
+      await reportIncompleteGames(incompleteGames);
+    }
 
     if (gamesToSend.length === 0) {
-      console.log("No new free games to send.");
+      console.log("No complete free games to send.");
       return;
     }
 
@@ -117,4 +160,5 @@ module.exports = {
   getCurrentGameUuids,
   getKnownGameUuidsForStore,
   runFreeGames,
+  splitGamesByCompleteness,
 };

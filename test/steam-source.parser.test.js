@@ -49,7 +49,7 @@ test("Steam details parsers normalize API and page metadata", () => {
     <div class="app_tag">Action</div>
     <div class="app_tag">Indie</div>
     <div class="game_purchase_discount_quantity">До 27 августа в 17:00</div>
-  `);
+  `, { now: new Date("2026-08-24T12:00:00.000Z") });
 
   assert.deepEqual(details, {
     description: "A & B",
@@ -57,6 +57,6 @@ test("Steam details parsers normalize API and page metadata", () => {
   });
   assert.deepEqual(pageMetadata, {
     tags: ["Action", "Indie"],
-    offerEndsAt: "27 августа в 17:00",
+    offerEndsAt: "27.08.2026 в 17:00",
   });
 });

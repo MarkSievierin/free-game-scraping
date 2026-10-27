@@ -5,7 +5,6 @@ const {
 } = require("./epic.catalog.config");
 const {
   getEpicOfferPageSlug,
-  parseEpicBrowseMarkdown,
   parseEpicGamesFromCatalog,
 } = require("./epic.catalog.parser");
 const { fetchEpicCatalog } = require("./epic.catalog.client");
@@ -32,6 +31,5 @@ module.exports = {
   buildEpicCatalogUrl,
   getEpicOfferPageSlug,
   fetchFreeGames,
-  parseEpicBrowseMarkdown,
   parseEpicGamesFromCatalog,
 };

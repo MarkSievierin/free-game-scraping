@@ -126,7 +126,7 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
 
       const params = [normalizedServerType, ...stores];
       let sql = `
-        SELECT id, uuid, type, title, link, chat_id, telegram_message_id, telegram_message_kind, message_created_at, created_at
+        SELECT id, uuid, type, title, link, discount_ends_at, chat_id, telegram_message_id, telegram_message_kind, message_created_at, created_at
         FROM actual_free_game
         WHERE server_type = ?
           AND status = 'active'
