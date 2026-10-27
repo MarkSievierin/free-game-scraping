@@ -1,17 +1,16 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { getCurrentGameUuids, getKnownGameUuidsForStore } = require("../index");
+const { getCurrentGameUuids, getKnownGameUuidsForStore } = require("../src/application/source-fetcher");
 
-test("getCurrentGameUuids uses explicit listing UUIDs attached by Epic fetcher", () => {
-  const games = [];
-
-  Object.defineProperty(games, "currentGameUuids", {
-    value: ["epic:listed-game"],
-    enumerable: false,
-  });
-
-  assert.deepEqual(getCurrentGameUuids(games), ["epic:listed-game"]);
+test("getCurrentGameUuids uses the explicit source result", () => {
+  assert.deepEqual(
+    getCurrentGameUuids({
+      games: [],
+      currentGameUuids: ["epic:listed-game"],
+    }),
+    ["epic:listed-game"],
+  );
 });
 
 test("getCurrentGameUuids falls back to game data for sources without explicit listing UUIDs", () => {

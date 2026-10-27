@@ -4,26 +4,9 @@ const {
   get,
   openDatabase,
   run,
-} = require("./mysql.utils");
-
-function normalizeStore(store) {
-  return String(store || "").trim().toLowerCase();
-}
-
-function buildGameUuid(game) {
-  const store = normalizeStore(game.store);
-  const externalId = String(game.appId || game.link || "").trim();
-
-  if (!store || !externalId) {
-    return "";
-  }
-
-  return `${store}:${externalId}`;
-}
-
-function normalizeServerType(value) {
-  return String(value || "").trim().toLowerCase() === "prod" ? "prod" : "stage";
-}
+} = require("./mysql.client");
+const { normalizeStore, buildGameUuid } = require("../../domain/free-game");
+const { normalizeServerType } = require("../../config/runtime.config");
 
 function buildSqlPlaceholders(values) {
   return values.map(() => "?").join(", ");
@@ -103,23 +86,6 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
 
       return grouped;
     },
-    async markGamesSeen(games) {
-      for (const game of games) {
-        const uuid = buildGameUuid(game);
-
-        if (!uuid) {
-          continue;
-        }
-
-        await run(
-          database,
-          `UPDATE actual_free_game
-           SET last_seen_at = CURRENT_TIMESTAMP
-           WHERE uuid = ? AND server_type = ? AND status = 'active'`,
-          [uuid, normalizedServerType],
-        );
-      }
-    },
     async markGameUuidsSeen(gameUuids) {
       const uuids = [...new Set((gameUuids || []).map((uuid) => String(uuid || "").trim()).filter(Boolean))];
 
@@ -143,7 +109,7 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
 
       const params = [normalizedServerType, ...stores];
       let sql = `
-        SELECT id, uuid, type, title, link, chat_id, telegram_message_id, telegram_message_kind, message_created_at, created_at
+        SELECT id, uuid, type, title, link, discount_ends_at, chat_id, telegram_message_id, telegram_message_kind, message_created_at, created_at
         FROM actual_free_game
         WHERE server_type = ?
           AND status = 'active'
@@ -221,11 +187,6 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
         });
       }
     },
-    async saveGames(games) {
-      for (const game of games) {
-        await this.saveGame(game);
-      }
-    },
     async markGameDeleted(id) {
       await run(
         database,
@@ -240,15 +201,6 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
         database,
         `UPDATE actual_free_game
          SET status = 'ended', ended_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND server_type = ?`,
-        [id, normalizedServerType],
-      );
-    },
-    async markGameDeleteFailed(id) {
-      await run(
-        database,
-        `UPDATE actual_free_game
-         SET status = 'delete_failed', ended_at = CURRENT_TIMESTAMP
          WHERE id = ? AND server_type = ?`,
         [id, normalizedServerType],
       );
@@ -269,7 +221,5 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
 }
 
 module.exports = {
-  buildGameUuid,
   createActualFreeGamesRepository,
-  normalizeServerType,
 };

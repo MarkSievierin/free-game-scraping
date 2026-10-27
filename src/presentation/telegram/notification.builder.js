@@ -1,16 +1,10 @@
-const { buildTelegramPhotoRequestDto } = require("../dto/telegram-photo-request.dto");
-const { buildTelegramMessageRequestDto } = require("../dto/telegram-message-request.dto");
-
-function escapeTelegramHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-}
+const { buildTelegramPhotoRequestDto } = require("../../infrastructure/telegram/telegram-photo.dto");
+const { buildTelegramMessageRequestDto } = require("../../infrastructure/telegram/telegram-message.dto");
+const { escapeTelegramHtml } = require("../../shared/telegram-html");
+const { normalizeText } = require("../../shared/text");
 
 function truncateText(value, maxLength) {
-  const normalizedValue = String(value || "").replace(/\s+/g, " ").trim();
+  const normalizedValue = normalizeText(value);
 
   if (normalizedValue.length <= maxLength) {
     return normalizedValue;
@@ -44,17 +38,15 @@ function getChannelMention() {
 function buildGameCaption(game) {
   const storeLabel = getStoreLabel(game.store);
   const title = storeLabel ? `${game.title} | ${storeLabel}` : game.title;
-  const offerEndsAt = String(game.offerEndsAt || "").trim() || "дату не видно, забирай скорее";
-  const description = String(game.description || "").trim() || "Описание не найдено";
   const lines = [
     `<b>${escapeTelegramHtml(title)}</b>`,
     `Скидка: ${escapeTelegramHtml(game.discount)}`,
     `Цена: ${escapeTelegramHtml(game.price)}`,
-    `Действует до: ${escapeTelegramHtml(offerEndsAt)}`,
+    `Действует до: ${escapeTelegramHtml(game.offerEndsAt)}`,
   ];
 
   lines.push("");
-  lines.push(escapeTelegramHtml(truncateText(description, 180)));
+  lines.push(escapeTelegramHtml(truncateText(game.description, 180)));
 
   const labels = [...(game.genres || []), ...(game.tags || [])]
     .filter(Boolean)
@@ -67,6 +59,23 @@ function buildGameCaption(game) {
   }
 
   const channelMention = getChannelMention();
+  if (channelMention) {
+    lines.push("");
+    lines.push(`🎮 Больше бесплатных игр: ${escapeTelegramHtml(channelMention)}`);
+  }
+
+  return lines.join("\n");
+}
+
+// Ended posts stay short: the store link and the claim button only lead to a paid page now.
+function buildEndedGameText({ title, endDate }) {
+  const endedLine = endDate ? `⛔ Раздача завершилась ${endDate}` : "⛔ Раздача завершилась";
+  const lines = [
+    `<s><b>${escapeTelegramHtml(title)}</b></s>`,
+    escapeTelegramHtml(endedLine),
+  ];
+  const channelMention = getChannelMention();
+
   if (channelMention) {
     lines.push("");
     lines.push(`🎮 Больше бесплатных игр: ${escapeTelegramHtml(channelMention)}`);
@@ -92,19 +101,6 @@ function buildClaimButtonMarkup(game) {
         },
       ],
     ],
-  };
-}
-
-function buildNoFreeGamesTelegramNotification({ chatId }) {
-  const text = "Сегодня не нашел игр со скидкой -100%.";
-
-  return {
-    method: "message",
-    dto: buildTelegramMessageRequestDto({
-      chatId,
-      text,
-    }),
-    logText: text,
   };
 }
 
@@ -146,6 +142,6 @@ function buildFreeGamesTelegramNotifications({ chatId, games }) {
 }
 
 module.exports = {
-  buildNoFreeGamesTelegramNotification,
+  buildEndedGameText,
   buildFreeGamesTelegramNotifications,
 };
