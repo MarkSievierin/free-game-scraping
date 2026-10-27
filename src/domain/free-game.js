@@ -21,7 +21,6 @@ function getMissingGameFields(game) {
 }
 
 module.exports = {
-  REQUIRED_GAME_FIELDS,
   buildGameUuid,
   getMissingGameFields,
   normalizeStore,

@@ -61,7 +61,7 @@ function parseSteamSearchResults(html) {
     const game = {
       appId: extractSteamAppId(link),
       store: "steam",
-      title: item.find(".title").text().trim() || "Без названия",
+      title: item.find(".title").text().trim(),
       discount,
       price: normalizePrice(item.find(".discount_final_price").text().trim() || "Без цены"),
       link,
@@ -118,7 +118,6 @@ function parseSteamPageMetadata(html, { now = new Date() } = {}) {
 }
 
 module.exports = {
-  extractSteamAppId,
   parseSteamAppDetails,
   parseSteamPageMetadata,
   parseSteamSearchResults,

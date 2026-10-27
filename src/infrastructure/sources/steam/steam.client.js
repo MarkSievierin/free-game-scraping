@@ -53,7 +53,6 @@ async function fetchSteamPageMetadata(link) {
 
 module.exports = {
   STEAM_URL,
-  buildLocalizedSteamUrl,
   fetchSteamAppDetails,
   fetchSteamPageMetadata,
   requestText,

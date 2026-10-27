@@ -35,7 +35,6 @@ function buildEpicCatalogUrl(config) {
 
 module.exports = {
   EPIC_BASE_URL,
-  EPIC_PROMOTIONS_ENDPOINT,
   buildEpicCatalogUrl,
   resolveEpicCatalogConfig,
 };

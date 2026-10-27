@@ -38,17 +38,15 @@ function getChannelMention() {
 function buildGameCaption(game) {
   const storeLabel = getStoreLabel(game.store);
   const title = storeLabel ? `${game.title} | ${storeLabel}` : game.title;
-  const offerEndsAt = String(game.offerEndsAt || "").trim() || "дату не видно, забирай скорее";
-  const description = String(game.description || "").trim() || "Описание не найдено";
   const lines = [
     `<b>${escapeTelegramHtml(title)}</b>`,
     `Скидка: ${escapeTelegramHtml(game.discount)}`,
     `Цена: ${escapeTelegramHtml(game.price)}`,
-    `Действует до: ${escapeTelegramHtml(offerEndsAt)}`,
+    `Действует до: ${escapeTelegramHtml(game.offerEndsAt)}`,
   ];
 
   lines.push("");
-  lines.push(escapeTelegramHtml(truncateText(description, 180)));
+  lines.push(escapeTelegramHtml(truncateText(game.description, 180)));
 
   const labels = [...(game.genres || []), ...(game.tags || [])]
     .filter(Boolean)
@@ -106,19 +104,6 @@ function buildClaimButtonMarkup(game) {
   };
 }
 
-function buildNoFreeGamesTelegramNotification({ chatId }) {
-  const text = "Сегодня не нашел игр со скидкой -100%.";
-
-  return {
-    method: "message",
-    dto: buildTelegramMessageRequestDto({
-      chatId,
-      text,
-    }),
-    logText: text,
-  };
-}
-
 function buildFreeGamesTelegramNotifications({ chatId, games }) {
   return games.map((game) => {
     const caption = buildGameCaption(game);
@@ -158,6 +143,5 @@ function buildFreeGamesTelegramNotifications({ chatId, games }) {
 
 module.exports = {
   buildEndedGameText,
-  buildNoFreeGamesTelegramNotification,
   buildFreeGamesTelegramNotifications,
 };

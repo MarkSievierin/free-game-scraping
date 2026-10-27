@@ -6,7 +6,6 @@ const {
   requestText,
 } = require("./steam.client");
 const {
-  extractSteamAppId,
   parseSteamAppDetails,
   parseSteamPageMetadata,
   parseSteamSearchResults,
@@ -94,5 +93,4 @@ async function fetchFreeGames({ limit, knownGameUuids = [] } = {}) {
 
 module.exports = {
   fetchFreeGames,
-  extractSteamAppId,
 };

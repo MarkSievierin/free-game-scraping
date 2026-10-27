@@ -4,7 +4,6 @@ const {
   resolveEpicCatalogConfig,
 } = require("./epic.catalog.config");
 const {
-  getEpicOfferPageSlug,
   parseEpicGamesFromCatalog,
 } = require("./epic.catalog.parser");
 const { fetchEpicCatalog } = require("./epic.catalog.client");
@@ -29,7 +28,6 @@ async function fetchFreeGames({ limit, knownGameUuids = [], catalogConfig } = {}
 
 module.exports = {
   buildEpicCatalogUrl,
-  getEpicOfferPageSlug,
   fetchFreeGames,
   parseEpicGamesFromCatalog,
 };

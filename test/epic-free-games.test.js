@@ -109,7 +109,6 @@ test("Epic parser maps an active giveaway from freeGamesPromotions to the game c
   );
   assert.equal(games[0].discount, "-100%");
   assert.equal(games[0].price, "Бесплатно");
-  assert.equal(games[0].originalPrice, "459,00 ₴");
   assert.equal(games[0].offerEndsAt, "29.10.2026 в 16:00");
   assert.equal(buildGameUuid(games[0]), "epic:sker-ritual-aac702");
 });

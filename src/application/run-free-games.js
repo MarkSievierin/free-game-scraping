@@ -11,8 +11,6 @@ const { sendTelegramNotifications } = require("./send-telegram-notifications");
 const {
   countKnownGameUuids,
   fetchGamesFromEnabledSources,
-  getCurrentGameUuids,
-  getKnownGameUuidsForStore,
 } = require("./source-fetcher");
 
 function splitGamesByCompleteness(games) {
@@ -157,8 +155,6 @@ async function runFreeGames({ env = process.env } = {}) {
 }
 
 module.exports = {
-  getCurrentGameUuids,
-  getKnownGameUuidsForStore,
   runFreeGames,
   splitGamesByCompleteness,
 };

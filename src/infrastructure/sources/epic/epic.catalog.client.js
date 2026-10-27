@@ -41,6 +41,5 @@ async function fetchEpicCatalog(config) {
 }
 
 module.exports = {
-  EPIC_REQUEST_TIMEOUT_MS,
   fetchEpicCatalog,
 };

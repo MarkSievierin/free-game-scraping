@@ -86,23 +86,6 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
 
       return grouped;
     },
-    async markGamesSeen(games) {
-      for (const game of games) {
-        const uuid = buildGameUuid(game);
-
-        if (!uuid) {
-          continue;
-        }
-
-        await run(
-          database,
-          `UPDATE actual_free_game
-           SET last_seen_at = CURRENT_TIMESTAMP
-           WHERE uuid = ? AND server_type = ? AND status = 'active'`,
-          [uuid, normalizedServerType],
-        );
-      }
-    },
     async markGameUuidsSeen(gameUuids) {
       const uuids = [...new Set((gameUuids || []).map((uuid) => String(uuid || "").trim()).filter(Boolean))];
 
@@ -204,11 +187,6 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
         });
       }
     },
-    async saveGames(games) {
-      for (const game of games) {
-        await this.saveGame(game);
-      }
-    },
     async markGameDeleted(id) {
       await run(
         database,
@@ -223,15 +201,6 @@ async function createActualFreeGamesRepository({ serverType } = {}) {
         database,
         `UPDATE actual_free_game
          SET status = 'ended', ended_at = CURRENT_TIMESTAMP
-         WHERE id = ? AND server_type = ?`,
-        [id, normalizedServerType],
-      );
-    },
-    async markGameDeleteFailed(id) {
-      await run(
-        database,
-        `UPDATE actual_free_game
-         SET status = 'delete_failed', ended_at = CURRENT_TIMESTAMP
          WHERE id = ? AND server_type = ?`,
         [id, normalizedServerType],
       );

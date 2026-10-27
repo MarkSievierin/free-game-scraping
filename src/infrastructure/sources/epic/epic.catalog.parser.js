@@ -84,31 +84,6 @@ function getEpicImageUrl(element) {
   return normalizeText(images.find((image) => image?.url)?.url || "");
 }
 
-function getEpicOriginalPrice(element) {
-  const formattedPrice = element?.price?.totalPrice?.fmtPrice?.originalPrice;
-
-  if (formattedPrice) {
-    return normalizeText(formattedPrice);
-  }
-
-  const originalPrice = element?.price?.totalPrice?.originalPrice;
-  const decimals = element?.price?.totalPrice?.currencyInfo?.decimals;
-
-  if (typeof originalPrice !== "number") {
-    return "";
-  }
-
-  const divisor = 10 ** (Number.isInteger(decimals) ? decimals : 2);
-
-  return String(originalPrice / divisor);
-}
-
-function getEpicTags(element) {
-  const productType = normalizeText(element?.offerType) === "BASE_GAME" ? "Game" : "";
-
-  return productType ? [productType] : [];
-}
-
 function isGameCatalogElement(element) {
   const categories = Array.isArray(element?.categories) ? element.categories : [];
   const categoryPaths = categories
@@ -133,26 +108,18 @@ function mapEpicCatalogElement(element, promotion, locale) {
     normalizeText(element?.offerType) === "BASE_GAME"
       ? "Game"
       : normalizeText(element?.offerType || "Game");
-  const tags = getEpicTags(element);
-
-  if (productType && !tags.includes(productType)) {
-    tags.unshift(productType);
-  }
 
   return {
     appId,
     store: "epic",
-    catalogPath: catalogPath || `/${fallbackLocale}/p/${appId}`,
-    productType,
     title: normalizeText(element.title),
     discount: "-100%",
     price: "Бесплатно",
-    originalPrice: getEpicOriginalPrice(element),
     link,
     imageUrl: getEpicImageUrl(element),
     description: normalizeText(element.description || element.longDescription || ""),
     genres: [],
-    tags,
+    tags: [productType],
     offerEndsAt: formatOfferEndsAtFromTimestamp(promotion.endDate),
   };
 }
@@ -188,9 +155,5 @@ function parseEpicGamesFromCatalog(payload, { now = new Date(), locale } = {}) {
 }
 
 module.exports = {
-  buildAbsoluteEpicUrl,
-  extractOfferSlug,
-  getActiveFreePromotion,
-  getEpicOfferPageSlug,
   parseEpicGamesFromCatalog,
 };

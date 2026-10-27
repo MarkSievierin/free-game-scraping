@@ -57,9 +57,6 @@ function createRepositoryForActiveGame(game, calls) {
     async markGameEnded(id) {
       calls.push({ method: "markGameEnded", id });
     },
-    async markGameDeleteFailed(id) {
-      calls.push({ method: "markGameDeleteFailed", id });
-    },
     async markGameEditFailed(id) {
       calls.push({ method: "markGameEditFailed", id });
     },

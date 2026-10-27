@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { getCurrentGameUuids, getKnownGameUuidsForStore } = require("../index");
+const { getCurrentGameUuids, getKnownGameUuidsForStore } = require("../src/application/source-fetcher");
 
 test("getCurrentGameUuids uses the explicit source result", () => {
   assert.deepEqual(
