@@ -3,23 +3,30 @@ const { normalizeText } = require("./text");
 // Epic returns exact UTC timestamps; posts show them in one fixed zone so every store reads the same.
 const OFFER_TIME_ZONE = "Europe/Berlin";
 
+// Steam writes months in full ("ноября") or abbreviated ("ноя"), so months are matched by their first
+// three letters; May is the only month whose forms ("мая", "май") differ there.
 const RUSSIAN_MONTHS = {
-  января: 1,
-  февраля: 2,
-  марта: 3,
-  апреля: 4,
+  янв: 1,
+  фев: 2,
+  мар: 3,
+  апр: 4,
   мая: 5,
-  июня: 6,
-  июля: 7,
-  августа: 8,
-  сентября: 9,
-  октября: 10,
-  ноября: 11,
-  декабря: 12,
+  май: 5,
+  июн: 6,
+  июл: 7,
+  авг: 8,
+  сен: 9,
+  окт: 10,
+  ноя: 11,
+  дек: 12,
 };
 
+function getRussianMonth(word) {
+  return RUSSIAN_MONTHS[String(word || "").slice(0, 3)];
+}
+
 const NUMERIC_DATE_PATTERN = /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+в\s+(\d{1,2}):(\d{2}))?$/;
-const RUSSIAN_DATE_PATTERN = /^(\d{1,2})\s+([а-яё]+)(?:\s+(\d{4}))?(?:\s+в\s+(\d{1,2}):(\d{2}))?$/i;
+const RUSSIAN_DATE_PATTERN = /^(\d{1,2})\s+([а-яё]+)\.?(?:\s+(\d{4}))?(?:\s+в\s+(\d{1,2}):(\d{2}))?$/i;
 
 function pad(value) {
   return String(value).padStart(2, "0");
@@ -90,9 +97,9 @@ function parseOfferEndsAt(value, { referenceDate = new Date() } = {}) {
 
   const russianMatch = !parts && text.match(RUSSIAN_DATE_PATTERN);
 
-  if (russianMatch && RUSSIAN_MONTHS[russianMatch[2]]) {
+  if (russianMatch && getRussianMonth(russianMatch[2])) {
     const day = Number(russianMatch[1]);
-    const month = RUSSIAN_MONTHS[russianMatch[2]];
+    const month = getRussianMonth(russianMatch[2]);
 
     parts = {
       day,

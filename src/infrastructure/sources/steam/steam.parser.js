@@ -40,7 +40,7 @@ function normalizePrice(price) {
 
 function extractOfferEndsAt(discountQuantityText, { now } = {}) {
   const normalizedText = normalizeText(discountQuantityText);
-  const match = normalizedText.match(/до\s+(\d{1,2}\s+[а-яё]+(?:\s+в\s+\d{1,2}:\d{2})?)/i);
+  const match = normalizedText.match(/до\s+(\d{1,2}\s+[а-яё]+\.?(?:\s+в\s+\d{1,2}:\d{2})?)/i);
 
   return match ? normalizeOfferEndsAt(match[1], { referenceDate: now }) : "";
 }
@@ -85,12 +85,19 @@ function parseSteamAppDetails(payload, appId) {
 
   if (!appPayload?.success || !appPayload.data) {
     return {
+      type: "",
+      baseGameAppId: "",
+      isFree: false,
       description: "",
       genres: [],
     };
   }
 
   return {
+    type: normalizeText(appPayload.data.type).toLowerCase(),
+    baseGameAppId: String(appPayload.data.fullgame?.appid || ""),
+    // A temporary -100% discount reports is_free too; final price 0 covers the cases where it does not.
+    isFree: Boolean(appPayload.data.is_free) || appPayload.data.price_overview?.final === 0,
     description: normalizeText(decodeHtmlEntities(appPayload.data.short_description)),
     genres: Array.isArray(appPayload.data.genres)
       ? appPayload.data.genres

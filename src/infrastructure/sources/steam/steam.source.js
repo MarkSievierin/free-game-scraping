@@ -24,6 +24,19 @@ function getRandomDelayMs() {
   ) + DETAIL_REQUEST_DELAY_MIN_MS;
 }
 
+// A free DLC is only useful to someone who owns its base game, so DLC of paid games is not posted.
+async function isDlcOfPaidGame(details) {
+  if (details.type !== "dlc" || !details.baseGameAppId) {
+    return false;
+  }
+
+  await sleep(getRandomDelayMs());
+  const baseGamePayload = await fetchSteamAppDetails(details.baseGameAppId);
+
+  return !parseSteamAppDetails(baseGamePayload, details.baseGameAppId).isFree;
+}
+
+// Returns null for a game that should not be posted at all.
 async function enrichGame(game, index) {
   if (!game.appId) {
     return game;
@@ -34,10 +47,15 @@ async function enrichGame(game, index) {
       await sleep(getRandomDelayMs());
     }
 
-    const detailsPayload = await fetchSteamAppDetails(game.appId);
+    const details = parseSteamAppDetails(await fetchSteamAppDetails(game.appId), game.appId);
+
+    if (await isDlcOfPaidGame(details)) {
+      console.log(`Skipped Steam DLC of a paid game: ${game.title}`);
+      return null;
+    }
+
     await sleep(getRandomDelayMs());
     const pageHtml = await fetchSteamPageMetadata(game.link);
-    const details = parseSteamAppDetails(detailsPayload, game.appId);
     const pageMetadata = parseSteamPageMetadata(pageHtml);
 
     return {
@@ -82,7 +100,11 @@ async function fetchFreeGames({ limit, knownGameUuids = [] } = {}) {
   const enrichedGames = [];
 
   for (const [index, game] of games.entries()) {
-    enrichedGames.push(await enrichGame(game, index));
+    const enrichedGame = await enrichGame(game, index);
+
+    if (enrichedGame) {
+      enrichedGames.push(enrichedGame);
+    }
   }
 
   return {

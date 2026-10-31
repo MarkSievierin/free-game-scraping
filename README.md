@@ -37,6 +37,10 @@ Steam games come from the store specials search sorted by price; each new `-100%
 from `appdetails` (description, genres) and its store page (tags, end date). If enrichment fails, the
 game is held back by the publishing rules below and retried on the next run.
 
+A free DLC is posted only when its base game (`fullgame` in `appdetails`) is free as well: DLC for a
+paid game is useless to most of the channel. Such DLC is skipped silently on every run (one extra
+`appdetails` request for the base game).
+
 ## Publishing rules
 
 Before sending, every new game (any store) must have a title, link, image, description and offer end
@@ -46,8 +50,9 @@ to the dev bot (`BOT_TOKEN_DEV` + `CHAT_ID_DEV`). This report works in `prod` to
 variables on the production server as well; without them the run only logs the skipped games.
 
 Offer end dates use one format for all stores: `DD.MM.YYYY в HH:MM`. Epic UTC timestamps are shown in
-the `Europe/Berlin` time zone. Steam shows dates without a year ("27 августа в 17:00"), so the year is
-taken as the nearest upcoming one.
+the `Europe/Berlin` time zone. Steam shows dates without a year, with the month in full or abbreviated
+("27 августа в 17:00", "2 ноя в 10:00"), so months are matched by their first three letters and the
+year is taken as the nearest upcoming one.
 
 When a game disappears from its store listing, its post is cleaned up: posts younger than 47 hours are
 deleted, older ones are edited to a short "ended" view without the claim button and the store link:

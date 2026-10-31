@@ -25,6 +25,15 @@ test("Steam dates without a year get the nearest upcoming year", () => {
   );
 });
 
+test("Steam abbreviated months are parsed", () => {
+  const referenceDate = new Date("2026-10-31T12:00:00.000Z");
+
+  assert.equal(normalizeOfferEndsAt("2 ноя в 10:00", { referenceDate }), "02.11.2026 в 10:00");
+  assert.equal(normalizeOfferEndsAt("31 окт в 10:00", { referenceDate }), "31.10.2026 в 10:00");
+  assert.equal(normalizeOfferEndsAt("5 сент. в 10:00", { referenceDate }), "05.09.2027 в 10:00");
+  assert.equal(normalizeOfferEndsAt("1 май", { referenceDate }), "01.05.2027");
+});
+
 test("dates already stored in other formats are normalized", () => {
   assert.equal(normalizeOfferEndsAt("26 апреля 2026"), "26.04.2026");
   assert.equal(normalizeOfferEndsAt("29.10.2026 в 16:00"), "29.10.2026 в 16:00");
